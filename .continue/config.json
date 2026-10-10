@@ -1,0 +1,82 @@
+{
+  "models": [
+    {
+      "title": "Qwen 2.5 Coder 14B (Reviewer)",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:14b",
+      "contextLength": 32768,
+      "completionOptions": { "temperature": 0.1, "topP": 0.9, "maxTokens": 4096 },
+      "systemMessage": "You are a skeptical senior reviewer focused on RUNTIME behavior in production. Follow AI_RULES.md and REVIEW_RULES.md strictly. Report only issues you can support with evidence visible in the provided diff/files; never invent file names, line numbers or behavior. Every finding needs: severity (ALTO/MEDIO/BAJO), where, evidence, a concrete runtime scenario, why it is real, a fix, and whether it blocks. No praise, no restating the diff, no style nits. If a lens has no findings, say nothing about it. Answer in Spanish."
+    },
+    {
+      "title": "DeepSeek Coder V2 (Second opinion)",
+      "provider": "ollama",
+      "model": "deepseek-coder-v2",
+      "contextLength": 32768,
+      "completionOptions": { "temperature": 0.1, "topP": 0.9, "maxTokens": 4096 },
+      "systemMessage": "You are a skeptical senior reviewer focused on RUNTIME behavior in production. Follow AI_RULES.md and REVIEW_RULES.md strictly. Report only issues you can support with evidence visible in the provided diff/files; never invent file names, line numbers or behavior. Answer in Spanish."
+    }
+  ],
+
+  "tabAutocompleteModel": {
+    "title": "Qwen 2.5 Coder 1.5B (Local)",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:1.5b"
+  },
+
+  "contextProviders": [
+    { "name": "diff" },
+    { "name": "file" },
+    { "name": "folder" },
+    { "name": "codebase" },
+    { "name": "terminal" }
+  ],
+
+  "customCommands": [
+    {
+      "name": "review-branch",
+      "description": "Full strict runtime-focused review of the branch diff (all lenses, one pass)",
+      "prompt": "Use AI_RULES.md and REVIEW_RULES.md as the standard. Analyze the attached git diff against main.\n\nPass 0: list changed files and what behavior changed. Explicitly list changed defaults, new/changed env vars and flags, new indexes/collections/queues, new required config keys, and the tenants/targets/environments affected.\nPass 1: for every new flag/parameter/target, trace the call path end to end and check for hardcoded values or guards that make it unreachable.\nPass 2: evaluate lenses A-K from REVIEW_RULES.md.\nPass 3: consolidate, order ALTO -> MEDIO -> BAJO, max 12 findings.\n\nUse the exact finding format and report skeleton from REVIEW_RULES.md (Dónde, Evidencia, Escenario runtime, Por qué es real, Fix, Bloqueante). Drop any finding that lacks a concrete runtime scenario. Put unverifiable items under 'Preguntas para el autor'. End with a verdict."
+    },
+    {
+      "name": "review-runtime",
+      "description": "Lens C+D+E: idempotency, retries, concurrency, partial failure, messaging",
+      "prompt": "Use AI_RULES.md section 3 and REVIEW_RULES.md lenses C, D and E. Review ONLY these concerns in the attached diff: check-then-act around external calls, where the claim happens, real retry policy vs local one, caller timeout vs downstream timeout, retries creating new resources, missing unique indexes, errors mapped to terminal states after a possible side effect, re-issuing non-idempotent side effects without reconciliation, nack/ack classification, dead-letter, long-lived consumers on scale-to-zero services. For each finding give a step-by-step runtime scenario with concrete numbers (timeouts, attempts). Use the mandatory finding format. If nothing applies, answer 'Sin hallazgos en C/D/E'."
+    },
+    {
+      "name": "review-trust",
+      "description": "Lens B: trust model, authority of sources, webhooks, credentials, multi-tenant defaults",
+      "prompt": "Use AI_RULES.md section 4 and REVIEW_RULES.md lens B. Review ONLY: which source is authoritative (secret manager/DB/env) and whether the diff inverts or bypasses it; request-provided values overriding stored ones; removed comments that documented a security intent; downstream effects of stale client data (account lockout, rate limits); unauthenticated callbacks/webhooks, missing signature or per-resource token, missing lifecycle-state check; secrets exposure; and whether a changed default now applies to tenants that did not ask for it. Provide a tenant x environment x flag behavior matrix for the changed paths. Use the mandatory finding format."
+    },
+    {
+      "name": "review-data",
+      "description": "Lens F: indexes, migrations, history, timestamps, targets",
+      "prompt": "Use AI_RULES.md sections 3.4 and 3.5 and REVIEW_RULES.md lens F. Review ONLY: indexes created lazily at runtime and cached failed promises; unique indexes missing a scope field (db_name/tenant); migration runners with hardcoded DB names or guards that contradict --target; whether each migration can run on every configured target; history collection naming vs cleanup filters; idempotency of migrations; updated_at/created_at sources and monotonicity. Use the mandatory finding format."
+    },
+    {
+      "name": "review-ops",
+      "description": "Lens A+G+H+J: reachability, config/env matrix, naming vs ops tooling, cross-repo coupling",
+      "prompt": "Use AI_RULES.md sections 5 and 6 and REVIEW_RULES.md lenses A, G, H and J. Review ONLY: hardcoded values that make new flags/targets unreachable; features announced in Makefile/README that the code cannot do; health checks that pass while the feature is broken; case-sensitive boolean env parsing; undocumented escape-hatch variables; new collection/table/queue names vs filters in cleanup/backup/export scripts (cmd_pallete.sh, Makefile, IaC); new required config keys missing in local/dev fixtures; dependencies on other repos/PRs not listed; differences between exported infra config and local config. Use the mandatory finding format."
+    },
+    {
+      "name": "review-drift",
+      "description": "Lens I: stale docs/comments/notes and missing tests",
+      "prompt": "Use REVIEW_RULES.md lens I and AI_RULES.md section 8. Review ONLY: docstrings/comments made false by the diff, notes or README text referencing files that do not exist, removed rationale comments, and the exact missing tests (duplicate delivery, concurrency, malformed input, each tenant/target/flag variant incl. True/TRUE/true, failure after side effect, migration re-run). Name each missing test case precisely. Severity is usually BAJO/MEDIO. Use the mandatory finding format."
+    },
+    {
+      "name": "review-arch",
+      "description": "Lens K: Clean Architecture, complexity, typing (baseline rules)",
+      "prompt": "Use AI_RULES.md sections 1 and 2 and REVIEW_RULES.md lens K. Review ONLY: I/O (DB, HTTP, queue, secrets) inside domain use cases/services, domain importing infrastructure, complexity limits (cyclomatic 10, cognitive 15, 50 lines, nesting > 3), new nested loops, any/loose casts, null paths, raw runtime errors where domain exceptions apply, ungated wiring decisions outside the composition root. Use the mandatory finding format and do not report anything a linter would already catch."
+    },
+    {
+      "name": "self-review",
+      "description": "Pre-push self review: what would my reviewers flag in this diff?",
+      "prompt": "Act as the strictest reviewer on the team looking at the attached diff BEFORE it is pushed. Using REVIEW_RULES.md, list only ALTO and MEDIO risks, each with the runtime scenario and the fix. Then list 'Accepted risks' I would need to write in the PR if I decide not to fix something, and any pre-existing issues I should split into another PR. Finally list the tests I am missing, named precisely."
+    },
+    {
+      "name": "pr-summary",
+      "description": "Architectural + runtime PR description with behavior matrix and accepted risks",
+      "prompt": "Based on the attached git diff against main and AI_RULES.md, write a concise Pull Request description with these sections: 1. Summary (what and why). 2. Architectural impact. 3. Domain changes. 4. Runtime behavior matrix (tenant x environment x flag -> resulting path) for any changed config/default. 5. New/changed env vars, flags, indexes, collections, required config keys. 6. Cross-repo/deployment dependencies. 7. Tests added (duplicate delivery, concurrency, malformed input, per-target/tenant/flag). 8. Accepted risks (risk, scenario, owner, follow-up) and pre-existing issues deliberately left out. Do not invent anything not present in the diff; write 'No aplica' for empty sections."
+    }
+  ]
+}

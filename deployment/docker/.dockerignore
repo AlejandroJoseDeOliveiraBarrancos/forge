@@ -1,0 +1,64 @@
+# Forge Deployment Docker Ignore
+# Excludes local overrides, data, secrets, and build artifacts from Docker context
+
+# Local override files (customized per machine)
+docker-compose.override.yml
+docker-compose.override.yml.local
+
+# Environment files with secrets
+*.env
+*.env.local
+*.env.*.local
+models/models.env
+dependencies/dependencies.env
+
+# Data volumes and persistence
+data/
+volumes/
+*.db
+*.sqlite
+*.sqlite3
+
+# Ollama model cache (large, pulled at runtime)
+models/*.bin
+models/*.gguf
+models/*.safetensors
+/root/.ollama/
+
+# Logs
+*.log
+logs/
+*.out
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Documentation (not needed in build context)
+docs/
+*.md
+!README.md
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+*~

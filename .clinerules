@@ -1,0 +1,12 @@
+# Roo Code Execution Instructions
+
+## Core Directives
+- You are an autonomous coding agent using local LLMs (via Ollama).
+- **Refer to `AI_RULES.md` at the repository root for all architectural standards, complexity limits, and code styles.** All code modifications must strictly comply with `AI_RULES.md`.
+- **Refer to `REVIEW_RULES.md` for all code review procedures, severity rubric, and finding format.** When evaluating diffs or performing reviews, you MUST follow the Pass 0-3 procedure, use the 11 lenses (A–K), and output findings in the mandatory format defined there.
+
+## Execution Protocol
+1. **Analyze First:** Before modifying any file, inspect existing domain boundaries to ensure no clean architecture violations are introduced.
+2. **Incremental Changes:** Write clean, modular code. Do not introduce monolithic changes.
+3. **Verification:** Always run local tests (linting, unit tests) using available terminal tools before marking an execution task as complete.
+4. **Review Compliance:** When reviewing any change (your own or others), apply `REVIEW_RULES.md` — posture, severity rubric, lenses, and finding format are mandatory.

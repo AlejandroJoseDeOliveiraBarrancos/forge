@@ -1,0 +1,31 @@
+services:
+  ollama-deepseek:
+    image: ollama/ollama:latest
+    container_name: forge-ollama-deepseek
+    profiles: ["models", "deepseek"]
+    volumes:
+      - ollama-deepseek:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+      - OLLAMA_ORIGINS=*
+      - OLLAMA_GPU_LAYERS=${OLLAMA_DEEPSEEK_GPU_LAYERS:-35}
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_NUM_PARALLEL=${OLLAMA_DEEPSEEK_NUM_PARALLEL:-1}
+      - OLLAMA_FLASH_ATTENTION=${OLLAMA_DEEPSEEK_FLASH_ATTENTION:-true}
+      - OLLAMA_KV_CACHE_TYPE=${OLLAMA_DEEPSEEK_KV_CACHE_TYPE:-q4_0}
+    ports:
+      - "${OLLAMA_DEEPSEEK_PORT:-11435}:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped

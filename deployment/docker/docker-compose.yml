@@ -1,0 +1,10 @@
+networks:
+  forge-network:
+    driver: bridge
+    name: forge-network
+
+volumes:
+  ollama-qwen:
+    name: forge-ollama-qwen
+  ollama-deepseek:
+    name: forge-ollama-deepseek
